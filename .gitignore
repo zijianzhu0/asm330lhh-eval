@@ -1,0 +1,81 @@
+# STM32CubeMX generated files
+*.ioc
+*.bak
+*.log
+*.database
+
+# Build output directories
+Debug/
+Release/
+build/
+out/
+*.elf
+*.axf
+*.map
+*.bin
+*.hex
+*.lst
+*.o
+*.d
+*.a
+
+# Object files and dependency files
+*.o
+*.d
+
+# STM32CubeIDE (Eclipse-based IDE) files
+*.launch
+.settings/
+.cproject
+.project
+.metadata/
+*.sdf
+*.swo
+*.uvoptx
+*.uvprojx
+
+# Keil uVision specific files
+*.dep
+*.lst
+*.crf
+*.uvgui.*
+*.bak
+*.uvoptx
+*.uvprojx
+
+# IAR Embedded Workbench files
+*.ewd
+*.ewp
+*.ewt
+*.eww
+*.dep
+*.dbgdt
+
+# CLion specific files
+.idea/
+cmake-build-debug/
+
+# Makefile-generated files
+Makefile
+Makefile.*
+*.mk
+
+# CMSIS and CubeMX generated output
+Drivers/CMSIS/Documentation/
+Drivers/STM32*/Documentation/
+
+# Generated source files (CubeMX auto-generated)
+Core/Inc/stm32*_hal_conf.h
+Core/Inc/stm32*_it.h
+Core/Src/stm32*_hal_msp.c
+Core/Src/stm32*_it.c
+Core/Src/system_stm32*.c
+
+# User-specific files
+*.user
+*.suo
+*.ncb
+*.pdb
+*.opendb
+*.cache
+*.ccls-cache/
