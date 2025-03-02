@@ -15,13 +15,10 @@
   *
   ******************************************************************************
   */
-#define STEVAL_MKI109V3
-#if defined(STEVAL_MKI109V3)
 /* MKI109V3: Define communication interface */
 #define SENSOR_BUS hspi2
 /* MKI109V3: Vdd and Vddio power supply values */
 #define PWM_3V3 915
-#endif
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -33,13 +30,11 @@
 #include <stdio.h>
 #include "asm330lhh_reg.h"
 
-#if defined(STEVAL_MKI109V3)
 #include "stm32f4xx_hal.h"
 #include "usbd_cdc_if.h"
 #include "stm32f4xx_hal_gpio.h"
 #include "stm32f4xx_hal_spi.h"
 #include "stm32f4xx_hal_tim.h"
-#endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -469,13 +464,11 @@ static void platform_delay(uint32_t ms)
  */
 static void platform_init(void)
 {
-#if defined(STEVAL_MKI109V3)
   TIM3->CCR1 = PWM_3V3;
   TIM3->CCR2 = PWM_3V3;
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
   HAL_Delay(1000);
-#endif
 }
 /* USER CODE END 4 */
 
