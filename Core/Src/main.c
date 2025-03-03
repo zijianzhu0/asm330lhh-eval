@@ -464,6 +464,9 @@ static void platform_delay(uint32_t ms)
  */
 static void platform_init(void)
 {
+  // These two PWMs are needed to enable power to the sensor
+  // They should be enabled on PC6, PC7
+  // TODO: reflect these changes in the pinout config. 
   TIM3->CCR1 = PWM_3V3;
   TIM3->CCR2 = PWM_3V3;
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
