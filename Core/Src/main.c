@@ -97,6 +97,7 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   platform_init();
+  uint8_t message[] = "Hello World\r\n";
 
   /* USER CODE END 2 */
 
@@ -107,8 +108,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  CDC_Transmit_FS(message, sizeof(message) - 1);  // Send "Hello World"
 	  HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_8);
-	  HAL_Delay(100);
+	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
