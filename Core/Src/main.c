@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "asm330lhh_reg.h"
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,6 +39,10 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 #define PWM_3V3 915
+#define BOOT_TIME 10 //ms
+#define CS_up_GPIO_Port GPIOB
+#define CS_up_Pin GPIO_PIN_12
+#define SENSOR_BUS hspi2
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -46,7 +51,14 @@ SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
-
+static int16_t data_raw_acceleration[3];
+static int16_t data_raw_angular_rate[3];
+static int16_t data_raw_temperature;
+static float_t acceleration_mg[3];
+static float_t angular_rate_mdps[3];
+static float_t temperature_degC;
+static uint8_t whoamI, rst;
+static uint8_t tx_buffer[1000];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -55,7 +67,13 @@ static void MX_GPIO_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
-
+static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp,
+                              uint16_t len);
+static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp,
+                             uint16_t len);
+static void tx_com( uint8_t *tx_buffer, uint16_t len );
+static void platform_delay(uint32_t ms);
+static void platform_init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -97,8 +115,45 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   platform_init();
-  uint8_t message[] = "Hello World\r\n";
+  /* Initialize mems driver interface */
+	stmdev_ctx_t dev_ctx;
+	dev_ctx.write_reg = platform_write;
+	dev_ctx.read_reg = platform_read;
+	dev_ctx.mdelay = platform_delay;
+	dev_ctx.handle = &SENSOR_BUS;
+	/* Init test platform */
+	platform_init();
+	/* Wait sensor boot time */
+	platform_delay(BOOT_TIME);
+	/* Check device ID */
+	asm330lhh_device_id_get(&dev_ctx, &whoamI);
 
+	if (whoamI != ASM330LHH_ID)
+	  while (1);
+	uint8_t message[] = "whoami\r\n";
+		CDC_Transmit_FS(message, sizeof(message) - 1);
+	/* Restore default configuration */
+	asm330lhh_reset_set(&dev_ctx, PROPERTY_ENABLE);
+
+	do {
+	  asm330lhh_reset_get(&dev_ctx, &rst);
+	} while (rst);
+
+	/* Start device configuration. */
+	asm330lhh_device_conf_set(&dev_ctx, PROPERTY_ENABLE);
+	/* Enable Block Data Update */
+	asm330lhh_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
+	/* Set Output Data Rate */
+	asm330lhh_xl_data_rate_set(&dev_ctx, ASM330LHH_XL_ODR_12Hz5);
+	asm330lhh_gy_data_rate_set(&dev_ctx, ASM330LHH_GY_ODR_12Hz5);
+	/* Set full scale */
+	asm330lhh_xl_full_scale_set(&dev_ctx, ASM330LHH_2g);
+	asm330lhh_gy_full_scale_set(&dev_ctx, ASM330LHH_2000dps);
+	/* Configure filtering chain(No aux interface)
+	 * Accelerometer - LPF1 + LPF2 path
+	 */
+	asm330lhh_xl_hp_path_on_out_set(&dev_ctx, ASM330LHH_LP_ODR_DIV_100);
+	asm330lhh_xl_filter_lp2_set(&dev_ctx, PROPERTY_ENABLE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,9 +163,56 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  CDC_Transmit_FS(message, sizeof(message) - 1);  // Send "Hello World"
-	  HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_8);
-	  HAL_Delay(1000);
+  uint8_t reg;
+  /* Read output only if new xl value is available */
+  asm330lhh_xl_flag_data_ready_get(&dev_ctx, &reg);
+
+  if (reg) {
+	/* Read acceleration field data */
+	memset(data_raw_acceleration, 0x00, 3 * sizeof(int16_t));
+	asm330lhh_acceleration_raw_get(&dev_ctx, data_raw_acceleration);
+	acceleration_mg[0] =
+	  asm330lhh_from_fs2g_to_mg(data_raw_acceleration[0]);
+	acceleration_mg[1] =
+	  asm330lhh_from_fs2g_to_mg(data_raw_acceleration[1]);
+	acceleration_mg[2] =
+	  asm330lhh_from_fs2g_to_mg(data_raw_acceleration[2]);
+	snprintf((char *)tx_buffer, sizeof(tx_buffer),
+			"Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
+			acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
+	tx_com(tx_buffer, strlen((char const *)tx_buffer));
+  	  }
+
+  asm330lhh_gy_flag_data_ready_get(&dev_ctx, &reg);
+
+  if (reg) {
+	/* Read angular rate field data */
+	memset(data_raw_angular_rate, 0x00, 3 * sizeof(int16_t));
+	asm330lhh_angular_rate_raw_get(&dev_ctx, data_raw_angular_rate);
+	angular_rate_mdps[0] =
+	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[0]);
+	angular_rate_mdps[1] =
+	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[1]);
+	angular_rate_mdps[2] =
+	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[2]);
+	snprintf((char *)tx_buffer, sizeof(tx_buffer),
+			"Angular rate [mdps]:%4.2f\t%4.2f\t%4.2f\r\n",
+			angular_rate_mdps[0], angular_rate_mdps[1], angular_rate_mdps[2]);
+	tx_com(tx_buffer, strlen((char const *)tx_buffer));
+  	  }
+
+  asm330lhh_temp_flag_data_ready_get(&dev_ctx, &reg);
+
+  if (reg) {
+	/* Read temperature data */
+	memset(&data_raw_temperature, 0x00, sizeof(int16_t));
+	asm330lhh_temperature_raw_get(&dev_ctx, &data_raw_temperature);
+	temperature_degC = asm330lhh_from_lsb_to_celsius(
+						 data_raw_temperature);
+	snprintf((char *)tx_buffer, sizeof(tx_buffer),
+			"Temperature [degC]:%6.2f\r\n", temperature_degC);
+	tx_com(tx_buffer, strlen((char const *)tx_buffer));
+  	  }
   }
   /* USER CODE END 3 */
 }
@@ -295,6 +397,70 @@ static void platform_init(void)
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
   HAL_Delay(1000);
+}
+
+/*
+ * @brief  platform specific delay (platform dependent)
+ *
+ * @param  ms        delay in ms
+ *
+ */
+static void platform_delay(uint32_t ms)
+{
+  HAL_Delay(ms);
+}
+
+/*
+ * @brief  Write generic device register (platform dependent)
+ *
+ * @param  tx_buffer     buffer to transmit
+ * @param  len           number of byte to send
+ *
+ */
+static void tx_com(uint8_t *tx_buffer, uint16_t len)
+{
+  CDC_Transmit_FS(tx_buffer, len);
+}
+
+/*
+ * @brief  Read generic device register (platform dependent)
+ *
+ * @param  handle    customizable argument. In this examples is used in
+ *                   order to select the correct sensor bus handler.
+ * @param  reg       register to read
+ * @param  bufp      pointer to buffer that store the data read
+ * @param  len       number of consecutive register to read
+ *
+ */
+static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp,
+                             uint16_t len)
+{
+  reg |= 0x80;
+  HAL_GPIO_WritePin(CS_up_GPIO_Port, CS_up_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(handle, &reg, 1, 1000);
+  HAL_SPI_Receive(handle, bufp, len, 1000);
+  HAL_GPIO_WritePin(CS_up_GPIO_Port, CS_up_Pin, GPIO_PIN_SET);
+  return 0;
+}
+
+/*
+ * @brief  Write generic device register (platform dependent)
+ *
+ * @param  handle    customizable argument. In this examples is used in
+ *                   order to select the correct sensor bus handler.
+ * @param  reg       register to write
+ * @param  bufp      pointer to data to write in register reg
+ * @param  len       number of consecutive register to write
+ *
+ */
+static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp,
+                              uint16_t len)
+{
+  HAL_GPIO_WritePin(CS_up_GPIO_Port, CS_up_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(handle, &reg, 1, 1000);
+  HAL_SPI_Transmit(handle, (uint8_t*) bufp, len, 1000);
+  HAL_GPIO_WritePin(CS_up_GPIO_Port, CS_up_Pin, GPIO_PIN_SET);
+  return 0;
 }
 /* USER CODE END 4 */
 
