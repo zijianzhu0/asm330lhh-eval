@@ -1,5 +1,4 @@
 # STM32CubeMX generated files
-*.ioc
 *.bak
 *.log
 *.database
