@@ -25,7 +25,6 @@ out/
 # STM32CubeIDE (Eclipse-based IDE) files
 *.launch
 .settings/
-.project
 .metadata/
 *.sdf
 *.swo
