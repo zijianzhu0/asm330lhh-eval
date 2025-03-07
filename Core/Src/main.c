@@ -143,11 +143,11 @@ int main(void)
 	/* Enable Block Data Update */
 	asm330lhh_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
 	/* Set Output Data Rate */
-	asm330lhh_xl_data_rate_set(&dev_ctx, ASM330LHH_XL_ODR_12Hz5);
-	asm330lhh_gy_data_rate_set(&dev_ctx, ASM330LHH_GY_ODR_12Hz5);
+	asm330lhh_xl_data_rate_set(&dev_ctx, ASM330LHH_XL_ODR_104Hz);
+	asm330lhh_gy_data_rate_set(&dev_ctx, ASM330LHH_GY_ODR_104Hz);
 	/* Set full scale */
 	asm330lhh_xl_full_scale_set(&dev_ctx, ASM330LHH_2g);
-	asm330lhh_gy_full_scale_set(&dev_ctx, ASM330LHH_2000dps);
+	asm330lhh_gy_full_scale_set(&dev_ctx, ASM330LHH_250dps);
 	/* Configure filtering chain(No aux interface)
 	 * Accelerometer - LPF1 + LPF2 path
 	 */
@@ -180,7 +180,7 @@ int main(void)
 			"Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
 			acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
 	tx_com(tx_buffer, strlen((char const *)tx_buffer));
-  	  }
+  }
 
   asm330lhh_gy_flag_data_ready_get(&dev_ctx, &reg);
 
@@ -198,7 +198,7 @@ int main(void)
 			"Angular rate [mdps]:%4.2f\t%4.2f\t%4.2f\r\n",
 			angular_rate_mdps[0], angular_rate_mdps[1], angular_rate_mdps[2]);
 	tx_com(tx_buffer, strlen((char const *)tx_buffer));
-  	  }
+  }
 
   asm330lhh_temp_flag_data_ready_get(&dev_ctx, &reg);
 
@@ -211,7 +211,7 @@ int main(void)
 	snprintf((char *)tx_buffer, sizeof(tx_buffer),
 			"Temperature [degC]:%6.2f\r\n", temperature_degC);
 	tx_com(tx_buffer, strlen((char const *)tx_buffer));
-  	  }
+  }
   HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_8);
   }
 
