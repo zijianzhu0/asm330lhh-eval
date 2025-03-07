@@ -137,7 +137,8 @@ int main(void)
 	do {
 	  asm330lhh_reset_get(&dev_ctx, &rst);
 	} while (rst);
-
+    // enable timestamping
+	asm330lhh_timestamp_set(&dev_ctx, 0x20);
 	/* Start device configuration. */
 	asm330lhh_device_conf_set(&dev_ctx, PROPERTY_ENABLE);
 	/* Enable Block Data Update */
