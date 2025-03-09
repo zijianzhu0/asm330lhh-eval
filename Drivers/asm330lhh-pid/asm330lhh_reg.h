@@ -1005,6 +1005,8 @@ int32_t asm330lhh_timestamp_get(const stmdev_ctx_t *ctx, uint8_t *val);
 
 int32_t asm330lhh_timestamp_raw_get(const stmdev_ctx_t *ctx, uint32_t *val);
 
+int32_t asm330lhh_get_ts_res(const stmdev_ctx_t *ctx, float *ts_res);
+
 typedef enum
 {
   ASM330LHH_NO_ROUND      = 0,

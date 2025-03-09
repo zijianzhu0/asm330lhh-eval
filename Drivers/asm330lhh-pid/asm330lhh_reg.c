@@ -911,6 +911,32 @@ int32_t asm330lhh_timestamp_raw_get(const stmdev_ctx_t *ctx, uint32_t *val)
 }
 
 /**
+  * @brief  Get the timestamp resolution (TS_Res) in seconds.
+  *         TS_Res = 1 / (40000 + (0.0015 * INTERNAL_FREQ_FINE * 40000))
+  *
+  * @param  ctx    Read / write interface definitions (ptr).
+  * @param  ts_res Pointer to store the calculated timestamp resolution.
+  * @retval        Interface status (return 0 -> no Error, else error code).
+  */
+int32_t asm330lhh_get_ts_res(const stmdev_ctx_t *ctx, float *ts_res)
+{
+    uint8_t internal_freq_fine;
+    int32_t ret;
+
+    // Read INTERNAL_FREQ_FINE register
+    ret = asm330lhh_read_reg(ctx, ASM330LHH_INTERNAL_FREQ_FINE, &internal_freq_fine, 1);
+    if (ret != 0) {
+        *ts_res = -1.0f;  // Indicate an error
+        return ret;
+    }
+
+    // Compute timestamp resolution (TS_Res) in seconds
+    *ts_res = 1.0f / (40000.0f + (0.0015f * internal_freq_fine * 40000.0f));
+
+    return 0; // Success
+}
+
+/**
   * @}
   *
   */

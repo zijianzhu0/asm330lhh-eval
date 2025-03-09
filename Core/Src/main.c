@@ -62,6 +62,7 @@ static uint8_t whoamI, rst;
 static uint8_t tx_buffer[1000];
 
 static uint32_t timestamp;
+static float ts_res = 0.000025; // uncalibrated ts_res is 25us
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -158,6 +159,7 @@ int main(void)
 
 	// enable timestamping
     asm330lhh_timestamp_set(&dev_ctx, PROPERTY_ENABLE);
+    asm330lhh_get_ts_res(&dev_ctx, &ts_res);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -192,8 +194,8 @@ int main(void)
 	asm330lhh_timestamp_raw_get(&dev_ctx, &timestamp);
 
 	snprintf((char *)tx_buffer, sizeof(tx_buffer),
-			"%08" PRIX32 " Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
-			timestamp,
+			"%.2f ms, Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
+			(timestamp * ts_res) * 1000.0f,
 			acceleration_mg[0],
 			acceleration_mg[1],
 			acceleration_mg[2]);
