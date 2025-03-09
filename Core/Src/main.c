@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "asm330lhh_reg.h"
 #include "usbd_cdc_if.h"
+#include <inttypes.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,6 +60,8 @@ static float_t angular_rate_mdps[3];
 static float_t temperature_degC;
 static uint8_t whoamI, rst;
 static uint8_t tx_buffer[1000];
+
+static uint32_t timestamp;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -137,8 +140,6 @@ int main(void)
 	do {
 	  asm330lhh_reset_get(&dev_ctx, &rst);
 	} while (rst);
-    // enable timestamping
-	asm330lhh_timestamp_set(&dev_ctx, 0x20);
 	/* Start device configuration. */
 	asm330lhh_device_conf_set(&dev_ctx, PROPERTY_ENABLE);
 	/* Enable Block Data Update */
@@ -154,6 +155,9 @@ int main(void)
 	 */
 	asm330lhh_xl_hp_path_on_out_set(&dev_ctx, ASM330LHH_LP_ODR_DIV_100);
 	asm330lhh_xl_filter_lp2_set(&dev_ctx, PROPERTY_ENABLE);
+
+	// enable timestamping
+    asm330lhh_timestamp_set(&dev_ctx, PROPERTY_ENABLE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -164,6 +168,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
   uint8_t reg;
+
   /* Read output only if new xl value is available */
   asm330lhh_xl_flag_data_ready_get(&dev_ctx, &reg);
 
@@ -171,49 +176,61 @@ int main(void)
 	/* Read acceleration field data */
 	memset(data_raw_acceleration, 0x00, 3 * sizeof(int16_t));
 	asm330lhh_acceleration_raw_get(&dev_ctx, data_raw_acceleration);
+
+	// read timestamp
+//	read_timestamp0(&dev_ctx, &reg);
+
+
 	acceleration_mg[0] =
 	  asm330lhh_from_fs2g_to_mg(data_raw_acceleration[0]);
 	acceleration_mg[1] =
 	  asm330lhh_from_fs2g_to_mg(data_raw_acceleration[1]);
 	acceleration_mg[2] =
 	  asm330lhh_from_fs2g_to_mg(data_raw_acceleration[2]);
+
+	timestamp = 0;
+	asm330lhh_timestamp_raw_get(&dev_ctx, &timestamp);
+
 	snprintf((char *)tx_buffer, sizeof(tx_buffer),
-			"Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
-			acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
+			"%08" PRIX32 " Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
+			timestamp,
+			acceleration_mg[0],
+			acceleration_mg[1],
+			acceleration_mg[2]);
 	tx_com(tx_buffer, strlen((char const *)tx_buffer));
   }
-
-  asm330lhh_gy_flag_data_ready_get(&dev_ctx, &reg);
-
-  if (reg) {
-	/* Read angular rate field data */
-	memset(data_raw_angular_rate, 0x00, 3 * sizeof(int16_t));
-	asm330lhh_angular_rate_raw_get(&dev_ctx, data_raw_angular_rate);
-	angular_rate_mdps[0] =
-	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[0]);
-	angular_rate_mdps[1] =
-	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[1]);
-	angular_rate_mdps[2] =
-	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[2]);
-	snprintf((char *)tx_buffer, sizeof(tx_buffer),
-			"Angular rate [mdps]:%4.2f\t%4.2f\t%4.2f\r\n",
-			angular_rate_mdps[0], angular_rate_mdps[1], angular_rate_mdps[2]);
-	tx_com(tx_buffer, strlen((char const *)tx_buffer));
-  }
-
-  asm330lhh_temp_flag_data_ready_get(&dev_ctx, &reg);
-
-  if (reg) {
-	/* Read temperature data */
-	memset(&data_raw_temperature, 0x00, sizeof(int16_t));
-	asm330lhh_temperature_raw_get(&dev_ctx, &data_raw_temperature);
-	temperature_degC = asm330lhh_from_lsb_to_celsius(
-						 data_raw_temperature);
-	snprintf((char *)tx_buffer, sizeof(tx_buffer),
-			"Temperature [degC]:%6.2f\r\n", temperature_degC);
-	tx_com(tx_buffer, strlen((char const *)tx_buffer));
-  }
-  HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_8);
+//
+//  asm330lhh_gy_flag_data_ready_get(&dev_ctx, &reg);
+//
+//  if (reg) {
+//	/* Read angular rate field data */
+//	memset(data_raw_angular_rate, 0x00, 3 * sizeof(int16_t));
+//	asm330lhh_angular_rate_raw_get(&dev_ctx, data_raw_angular_rate);
+//	angular_rate_mdps[0] =
+//	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[0]);
+//	angular_rate_mdps[1] =
+//	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[1]);
+//	angular_rate_mdps[2] =
+//	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[2]);
+//	snprintf((char *)tx_buffer, sizeof(tx_buffer),
+//			"Angular rate [mdps]:%4.2f\t%4.2f\t%4.2f\r\n",
+//			angular_rate_mdps[0], angular_rate_mdps[1], angular_rate_mdps[2]);
+//	tx_com(tx_buffer, strlen((char const *)tx_buffer));
+//  }
+//
+//  asm330lhh_temp_flag_data_ready_get(&dev_ctx, &reg);
+//
+//  if (reg) {
+//	/* Read temperature data */
+//	memset(&data_raw_temperature, 0x00, sizeof(int16_t));
+//	asm330lhh_temperature_raw_get(&dev_ctx, &data_raw_temperature);
+//	temperature_degC = asm330lhh_from_lsb_to_celsius(
+//						 data_raw_temperature);
+//	snprintf((char *)tx_buffer, sizeof(tx_buffer),
+//			"Temperature [degC]:%6.2f\r\n", temperature_degC);
+//	tx_com(tx_buffer, strlen((char const *)tx_buffer));
+//  }
+//  HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_8);
   }
 
   /* USER CODE END 3 */
