@@ -61,6 +61,7 @@ static float_t temperature_degC;
 static uint8_t whoamI, rst;
 static uint8_t tx_buffer[1000];
 
+static double timestamp_ms; //used for printout
 static uint32_t timestamp;
 static float ts_res = 0.000025; // uncalibrated ts_res is 25us
 /* USER CODE END PV */
@@ -193,9 +194,11 @@ int main(void)
 	timestamp = 0;
 	asm330lhh_timestamp_raw_get(&dev_ctx, &timestamp);
 
+	timestamp_ms = (double)timestamp * (double)ts_res * 1000.0;
+
 	snprintf((char *)tx_buffer, sizeof(tx_buffer),
-			"%.2f ms, Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
-			(timestamp * ts_res) * 1000.0f,
+			"%.2lf ms, Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
+			timestamp_ms,
 			acceleration_mg[0],
 			acceleration_mg[1],
 			acceleration_mg[2]);
