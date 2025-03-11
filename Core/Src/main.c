@@ -44,6 +44,19 @@
 #define CS_up_GPIO_Port GPIOB
 #define CS_up_Pin GPIO_PIN_12
 #define SENSOR_BUS hspi2
+
+#define PACKET_START 0xAA
+#define TYPE_ACCEL 0x01
+#define TYPE_GYRO  0x02
+#define TYPE_TEMP  0x03
+
+typedef struct {
+    uint8_t start;
+    uint8_t type;
+    uint32_t timestamp;
+    float_t data[3];  // X, Y, Z for accel/gyro; [0] for temp
+    uint8_t checksum;
+} __attribute__((packed)) Packet;  // Ensure packed structure
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -79,6 +92,8 @@ static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp,
 static void tx_com( uint8_t *tx_buffer, uint16_t len );
 static void platform_delay(uint32_t ms);
 static void platform_init(void);
+
+uint8_t calculate_checksum(Packet *pkt);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -195,14 +210,26 @@ int main(void)
 	asm330lhh_timestamp_raw_get(&dev_ctx, &timestamp);
 
 	timestamp_ms = (double)timestamp * (double)ts_res * 1000.0;
-
-	snprintf((char *)tx_buffer, sizeof(tx_buffer),
-			"%.2lf ms, Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
-			timestamp_ms,
-			acceleration_mg[0],
-			acceleration_mg[1],
-			acceleration_mg[2]);
-	tx_com(tx_buffer, strlen((char const *)tx_buffer));
+	Packet accel_pkt = {
+			PACKET_START,
+			TYPE_ACCEL,
+			timestamp,
+			{
+					acceleration_mg[0],
+					acceleration_mg[1],
+					acceleration_mg[2]
+			},
+			0
+	};
+	accel_pkt.checksum = calculate_checksum(&accel_pkt);
+	tx_com((char *)&accel_pkt, sizeof(accel_pkt));
+//	snprintf((char *)tx_buffer, sizeof(tx_buffer),
+//			"%.2lf ms, Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n",
+//			timestamp_ms,
+//			acceleration_mg[0],
+//			acceleration_mg[1],
+//			acceleration_mg[2]);
+//	tx_com(tx_buffer, strlen((char const *)tx_buffer));
   }
 //
 //  asm330lhh_gy_flag_data_ready_get(&dev_ctx, &reg);
@@ -506,6 +533,16 @@ static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp,
   HAL_SPI_Transmit(handle, (uint8_t*) bufp, len, 1000);
   HAL_GPIO_WritePin(CS_up_GPIO_Port, CS_up_Pin, GPIO_PIN_SET);
   return 0;
+}
+
+// XOR Checksum calculation
+uint8_t calculate_checksum(Packet *pkt) {
+    uint8_t *bytes = (uint8_t *)pkt;
+    uint8_t checksum = 0;
+    for (size_t i = 1; i < sizeof(Packet) - 1; i++) {
+        checksum ^= bytes[i];  // XOR all bytes except start and checksum
+    }
+    return checksum;
 }
 /* USER CODE END 4 */
 
