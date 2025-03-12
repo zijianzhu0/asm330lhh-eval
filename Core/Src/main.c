@@ -219,7 +219,7 @@ int main(void)
 					acceleration_mg[1],
 					acceleration_mg[2]
 			},
-			0
+			0U
 	};
 	accel_pkt.checksum = calculate_checksum(&accel_pkt);
 	tx_com((char *)&accel_pkt, sizeof(accel_pkt));
@@ -232,23 +232,41 @@ int main(void)
 //	tx_com(tx_buffer, strlen((char const *)tx_buffer));
   }
 //
-//  asm330lhh_gy_flag_data_ready_get(&dev_ctx, &reg);
-//
-//  if (reg) {
-//	/* Read angular rate field data */
-//	memset(data_raw_angular_rate, 0x00, 3 * sizeof(int16_t));
-//	asm330lhh_angular_rate_raw_get(&dev_ctx, data_raw_angular_rate);
-//	angular_rate_mdps[0] =
-//	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[0]);
-//	angular_rate_mdps[1] =
-//	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[1]);
-//	angular_rate_mdps[2] =
-//	  asm330lhh_from_fs2000dps_to_mdps(data_raw_angular_rate[2]);
+  asm330lhh_gy_flag_data_ready_get(&dev_ctx, &reg);
+
+  if (reg) {
+	/* Read angular rate field data */
+	memset(data_raw_angular_rate, 0x00, 3 * sizeof(int16_t));
+	asm330lhh_angular_rate_raw_get(&dev_ctx, data_raw_angular_rate);
+	angular_rate_mdps[0] =
+	  asm330lhh_from_fs250dps_to_mdps(data_raw_angular_rate[0]);
+	angular_rate_mdps[1] =
+	  asm330lhh_from_fs250dps_to_mdps(data_raw_angular_rate[1]);
+	angular_rate_mdps[2] =
+	  asm330lhh_from_fs250dps_to_mdps(data_raw_angular_rate[2]);
+
+	timestamp = 0;
+	asm330lhh_timestamp_raw_get(&dev_ctx, &timestamp);
+
+	timestamp_ms = (double)timestamp * (double)ts_res * 1000.0;
+	Packet gyro_pkt = {
+			PACKET_START,
+			TYPE_GYRO,
+			timestamp,
+			{
+					angular_rate_mdps[0],
+					angular_rate_mdps[1],
+					angular_rate_mdps[2]
+			},
+			0U
+	};
+	gyro_pkt.checksum = calculate_checksum(&gyro_pkt);
+	tx_com((char *)&gyro_pkt, sizeof(gyro_pkt));
 //	snprintf((char *)tx_buffer, sizeof(tx_buffer),
 //			"Angular rate [mdps]:%4.2f\t%4.2f\t%4.2f\r\n",
 //			angular_rate_mdps[0], angular_rate_mdps[1], angular_rate_mdps[2]);
 //	tx_com(tx_buffer, strlen((char const *)tx_buffer));
-//  }
+  }
 //
 //  asm330lhh_temp_flag_data_ready_get(&dev_ctx, &reg);
 //
