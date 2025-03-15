@@ -1,4 +1,4 @@
-# STM32 Sensor Data Streaming Project
+# asm330lhh-eval - Streaming 6-axis data over serial on boot
 
 This project enables automatic sensor data streaming upon boot using the STEVAL-MKI193V1 and STEVAL-MKI109V3 combo boards. It resolves the limitation of the MEMS Studio demo firmware and software, which typically requires manual sensor configuration after every reboot.
 
