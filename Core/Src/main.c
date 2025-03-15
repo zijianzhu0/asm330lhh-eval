@@ -557,7 +557,7 @@ static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp,
 uint8_t calculate_checksum(Packet *pkt) {
     uint8_t *bytes = (uint8_t *)pkt;
     uint8_t checksum = 0;
-    for (size_t i = 1; i < sizeof(Packet) - 1; i++) {
+    for (size_t i = 0; i < sizeof(Packet) - 1; i++) {
         checksum ^= bytes[i];  // XOR all bytes except start and checksum
     }
     return checksum;
